@@ -1,11 +1,11 @@
 # Creating  the GitHub repo
 # Creating Mongodb account
+# Creating Rendel account
 
 
 
-# i. Mongodb - npm install mongodb
-# ii. Jweb token and bcrypt - npm install jsonwebtoken bcryptjs
-# 
+# i. Mongodb - connected mongodb
+
 
 # INSTALLATIONS
 
@@ -14,4 +14,22 @@
 # 3. Install dotenv - npm install dotenv
 # 4. Install cors - npm install cors
 # 5. Install cookie-parser - npm install cookie-parser
-# 6. Install Mongodb - npm install mongoose
+# 6. Install Mongoose - npm install mongoose
+# 7. Jweb token and bcrypt - npm install jsonwebtoken bcryptjs
+
+
+
+# Project setup
+# folder setup
+# model
+
+
+
+# signup model (Name, Email, Password, confirm password, Tracks)
+Steps: 
+-Connect to Mongodb
+-created an Admin Model,
+-.env configuration
+-created an auth controller
+-created an auth Route
+        
