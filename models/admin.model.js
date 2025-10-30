@@ -11,6 +11,7 @@ const AdminSchema = new mongoose.Schema({
     email:{type: String, 
         require:[true, "please enter your email"], 
         trim: true, 
+        unique: true,
         lowercase: true, 
         match: [/\S+@\S+.\S+/], 
         minLength:[10, "email must be at least  10 characters"]
