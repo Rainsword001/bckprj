@@ -30,7 +30,7 @@ const newUser = await Enroll.create([{firstname, lastname, email,
     await session.commitTransaction();
     session.endSession()
     return res.status(201).json({
-        message: "User created Successfully"
+        message: "Enrolled Successfully"
     })
 
 
@@ -42,3 +42,48 @@ const newUser = await Enroll.create([{firstname, lastname, email,
 }
 
 }
+
+
+//get all user
+
+export const getAllEnrolled = async (req, res, next) => {
+  try {
+    const { track, search, page = 1, limit = 10 } = req.body;
+    const query = {};
+
+    // Filter by learning track
+    if (track) query.learningtrack = track;
+
+    // Search by name, email, or phone number (case-insensitive)
+    if (search) {
+      query.$or = [
+        { firstname: { $regex: search, $options: "i" } },
+        { lastname: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Pagination setup
+    const skip = (page - 1) * limit;
+
+    // Fetch total count and paginated data
+    const total = await Enroll.countDocuments(query);
+    const enrolled = await Enroll.find(query)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }); // optional: show latest first
+
+    // Response
+    res.status(200).json({
+      success: true,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: enrolled,
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};

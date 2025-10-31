@@ -47,12 +47,19 @@ const enrollSchema = new mongoose.Schema({
         "Cloud Computing",
         "Fullstack Development",
         "Backend Development"
-    ]}
-}, 
-{
-    timestamps: true
+    ]},
 
-});
+    attendance: [{
+        date: {type: Number, default: 0, require: true},
+        status: {
+            type: String,
+            enum: ["present", "absent"],
+            required: true
+        }
+    }]
+
+
+},{ timestamps: true});
 
 
 const Enroll = mongoose.model("Enroll", enrollSchema)
