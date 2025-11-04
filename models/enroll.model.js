@@ -1,6 +1,22 @@
 import mongoose from "mongoose";
 
 
+const attendanceSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    require: true
+  },
+  status: {
+    type: String,
+    enum:["presenr", "absent"],
+    require: true
+  },
+  _id: false
+})
+
+
+//
+
 const enrollSchema = new mongoose.Schema({
     firstname:{
         type: String,
@@ -50,12 +66,8 @@ const enrollSchema = new mongoose.Schema({
     ]},
 
     attendance: [{
-        date: {type: Number, default: 0, require: true},
-        status: {
-            type: String,
-            enum: ["present", "absent"],
-            required: true
-        }
+        type: [attendanceSchema],
+        default: []
     }]
 
 

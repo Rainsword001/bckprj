@@ -1,10 +1,12 @@
 import { Router } from "express";
 
-import {studentEnroll  } from "../controllers/enroll.controller.js";
+import {studentEnroll, getAllEnrolled  } from "../controllers/enroll.controller.js";
 
 const enrollRouter = Router();
 
-enrollRouter.post('/enroll', studentEnroll )
+enrollRouter.post('/enroll', studentEnroll );
+
+enrollRouter.get('/allstudents', getAllEnrolled);
 
 
 
