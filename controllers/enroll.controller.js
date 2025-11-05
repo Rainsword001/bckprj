@@ -44,79 +44,9 @@ const newUser = await Enroll.create([{firstname, lastname, email,
 }
 
 
-//get all user
-
-export const getAllEnrolled = async (req, res, next) => {
-  try {
-    const { track, search, page = 1, limit = 10 } = req.body;
-    const query = {};
-
-    // Filter by learning track
-    if (track) query.learningtrack = track;
-
-    // Search by name, email, or phone number (case-insensitive)
-    if (search) {
-      query.$or = [
-        { firstname: { $regex: search, $options: "i" } },
-        { lastname: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    // Pagination setup
-    const skip = (page - 1) * limit;
-
-    // Fetch total count and paginated data
-    const total = await Enroll.countDocuments(query);
-    const enrolled = await Enroll.find(query)
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 }); // optional: show latest first
-
-    // Response
-    res.status(200).json({
-      success: true,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-      data: enrolled,
-    });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
 
 
 // helper function to prevent attendace marking on saturday and sunday
-
-const isWeekend = (date) =>{
-  const day = date.getDay()
-  return day === 0 || day ===  6
-}
-
-// to know the start of the day
-
-const startOfDay = (date) =>{
-  const start = new Date(date)
-  start.setHours(0,0,0,0)
-  return start
-}
-
-// to know end of the day
-
-const endOfDay = (date) =>{
-  const end = new Date(date);
-  end.setHours(23, 59, 99, 999);
-  return end
-}
-
-
-
-
-
 
 
 //check if weekend
@@ -128,7 +58,7 @@ const weekend = (date) =>{
 
 // start of the day
 const getStartOFDay = (date) =>{
-  const start = new Date()
+  const start = new Date(date)
   start.setHours(0, 0, 0, 0)
 
   return start
@@ -149,14 +79,13 @@ const getWOrkingDays = (startDate, EndDate) =>{
   const workingDays = [ ];
   const current = new Date(startDate)
   while (current <= EndDate) {
-    if (!isWeekend(current)){
+    if (!weekend(current)){
           workingDays.push(new Date(current))
     }
+    current.setDate(current.getDate() + 1) // move to the next day
   }
+  return workingDays
 }
-
-
-
 
 
 // mark attendance
