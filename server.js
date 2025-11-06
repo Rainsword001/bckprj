@@ -3,10 +3,11 @@ import { DB } from "./database/mongodb.js";
 import {PORT} from './config/env.js';
 import authRouter from './routes/auth.routes.js';
 import enrollRouter from './routes/enroll.route.js';
-
+import cron from 'node-cron';
+import { autoMarkAbsence } from './controllers/attendance.controller.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-
+import attendaceRouter from './routes/attendance.route.js';
 
 const app = express();
 
@@ -25,11 +26,15 @@ app.use(express.urlencoded({extended: true}))
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', enrollRouter);
 app.use('/api/v1', enrollRouter);
-app.use('/api/v1/att', enrollRouter)
+app.use('/api/v1', attendaceRouter)
 
 
 
-
+cron.schedule('38 17 * * *', async () => {
+    console.log("Testing Auto marking")
+    
+    await autoMarkAbsence(null, null)
+})
 
 
 app.listen(PORT, () => {

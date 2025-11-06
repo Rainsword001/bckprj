@@ -1,90 +1,192 @@
-import Attendance from "../models/attendance.model.js";
 import Enroll from "../models/enroll.model.js";
 
-/**
- *  count weekdays (Mon–Fri) between two dates
- */
-const countWeekdays = (startDate, endDate) => {
-  let count = 0;
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    const day = current.getDay(); // 0 = Sunday, 6 = Saturday
-    if (day >= 1 && day <= 5) count++;
-    current.setDate(current.getDate() + 1);
+
+
+
+// helper function to prevent attendace marking on saturday and sunday
+//check if weekend
+const weekend = (date) =>{
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+// start of the day
+const getStartOFDay = (date) =>{
+  const start = new Date(date)
+  start.setHours(9, 0, 0, 0)
+
+  return start
+}
+
+
+//end of the day
+const getEndOfDay = (date) => {
+  const end = new Date(date)
+  end.setHours(13, 59, 99, 999)
+
+  return end
+}
+
+
+// get working days
+const getWOrkingDays = (startDate, EndDate) =>{
+  const workingDays = [ ];
+  const current = new Date(startDate)
+  while (current <= EndDate) {
+    if (!weekend(current)){
+          workingDays.push(new Date(current))
+    }
+    current.setDate(current.getDate() + 1) // move to the next day
   }
-  return count;
+  return workingDays
+}
+
+
+// mark attendance
+
+export const markAttendance = async (req, res, next) => {
+  
+ try {
+  const {email} = req.body;
+  //validate email
+  if(!email){
+    return res.status(400).json({message: "Email is required"})
+  };
+
+  //validate student enrollment
+  const student = await Enroll.findOne({email});
+
+  if(!student){
+    return res.status(400).json({message: "student not enrolled"})
+  }
+
+  // check if weekend
+  const today = new Date()
+  console.log("Todays Date: ", today)
+
+  if(weekend(today)){
+    return res.status(400).json({message: "Attendance can not be marke on weekend"})
+  }
+
+
+      // prevent marking attendance twice
+      const startofDay = getStartOFDay(today)
+      const endofDay = getEndOfDay(today)
+
+      const allreadyMarked = student.attendance.some((record)=>{
+            const recordDate = new Date(record.date)
+            return recordDate >= startofDay && recordDate <= endofDay;
+
+      });
+
+      if(allreadyMarked){
+        return res.status(400).json({message: "Attendance already marked"})
+      }
+
+      // marke the student present
+      student.attendance.push({
+          date: today,
+          status: "present"
+      })
+
+      await student.save()
+
+      return res.status(200).json({
+        message: "Attendance Marked successfully!"
+      })
+
+ } catch (error) {
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message
+    })
+ }
 };
 
-export const markAttendance = async (req, res) => {
+
+//autoMarkAbsence
+
+export const autoMarkAbsence = async (req, res, next) => {
+
   try {
-    const { email } = req.body;
+    // to get todays date and time
+    const today = new Date()
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
+    //dont run if it is weekend
+    if(weekend(today)){
+      const message = "Weekend - No auto-marking needed";
+      console.log(message)
+      
+
+      if(res){
+        return res.status(200).json({message})
+      }
+
+      return;
     }
 
-    // Verify student email in Enroll collection
-    const student = await Enroll.findOne({ email: email.toLowerCase().trim() });
+    //check if the current time is between 9am and 1:59pm
+    const dayBegins = getStartOFDay(today)
+    const dayEnds = getEndOfDay(today)
 
-    if (!student) {
-      return res.status(404).json({ message: "No registered student found with this email." });
+
+    //return all student list in the data base
+    const students = await Enroll.find({})
+
+    // to count how many of student is present and absent
+    let MarkedCount = 0;
+
+    //check if student have attendance for the day
+    for(const student of students){
+        const markToday = student.attendance.some((record) => { 
+                  //get the date from the record
+                  const recordDate = new Date(record.date)
+
+                  return (record.status === "present" && recordDate >= dayBegins && recordDate <= dayEnds);
+
+
+        });
+//
+        if(!markToday){
+          student.attendance.push({
+            date: today,
+            status: "absent"
+          })
+
+          await student.save()
+          MarkedCount++;
+          console.log(`Auto marked ${student.email} as absent today ${today.toDateString()}`)
+
+        };
+
+                const message = `The total students marked absent today is ${MarkedCount}`;
+                console.log(message)
     }
 
-    // Prevent duplicate marking for the same day
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const alreadyMarked = await Attendance.findOne({
-      email,
-      date: { $gte: today },
-    });
-
-    if (alreadyMarked) {
-      return res.status(400).json({ message: "Attendance already marked for today." });
-    }
-
-    // Define semester start date (can be dynamic)
-    const semesterStart = new Date("2025-09-02");
-    const totalClassDays = countWeekdays(semesterStart, new Date());
-
-    // Count total attendance days for this student
-    const attendedDays = await Attendance.countDocuments({ email });
-    const updatedAttendance = attendedDays + 1;
-
-    const attendancePercentage = ((updatedAttendance / totalClassDays) * 100).toFixed(2);
-
-    // Save new attendance record with student reference
-    const newAttendance = new Attendance({
-      student: student._id,
-      email,
-      attendancePercentage,
-    });
-
-    await newAttendance.save();
-
-    res.status(201).json({
-      message: "Attendance marked successfully!",
-      student: {
-        firstname: student.firstname,
-        lastname: student.lastname,
-        email: student.email,
-        phonenumber: student.phonenumber,
-        gender: student.gender,
-        learningtrack: student.learningtrack,
-        attendancePercentage: student.attendancePercentage
-      },
-      attendance: {
-        totalClassDays,
-        attendedDays: updatedAttendance,
-        attendancePercentage,
-        date: new Date(),
-      },
-    });
   } catch (error) {
-    console.error("Error marking attendance:", error);
-    res.status(500).json({
-      message: "Error marking attendance.",
-      error: error.message,
-    });
+    
   }
-};
+}
+
+
+//getOverallAttendance
+export const getOverallAttendance = async (req, res, next) => {
+  
+}
+
+//get StudentWith Attendance
+export const getStudentWithAttendance = async (req, res, next) => {
+  
+}
+
+
+//getstudentattendance
+export const getstudentattendance = async (req, res, next) => {
+
+  
+}
+
+
+
+
+

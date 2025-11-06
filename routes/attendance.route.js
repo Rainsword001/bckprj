@@ -1,14 +1,17 @@
 import { Router } from "express";
-
-import { markAttendance } from "../controllers/attendance.controller.js";
-
-
-const markRoute = Router();
-
-markRoute.post('/attendance', markAttendance)
+import { autoMarkAbsence, markAttendance } from "../controllers/attendance.controller.js";
 
 
+const attendaceRouter = Router()
+
+
+attendaceRouter.post('/mark', markAttendance)
 
 
 
-export default markRoute;
+
+
+
+
+
+export default attendaceRouter;
