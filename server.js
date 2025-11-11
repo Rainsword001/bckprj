@@ -26,11 +26,11 @@ app.use(express.urlencoded({extended: true}))
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1', enrollRouter);
 app.use('/api/v1', enrollRouter);
-app.use('/api/v1', attendaceRouter)
+app.use('/api/v1', attendaceRouter);
 
 
 
-cron.schedule('38 17 * * *', async () => {
+cron.schedule('29 13 * * *', async () => {
     console.log("Testing Auto marking")
     
     await autoMarkAbsence(null, null)

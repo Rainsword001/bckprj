@@ -69,10 +69,10 @@ const enrollSchema = new mongoose.Schema({
         "Backend Development"
     ]},
 
-    attendance: [{
+    attendance: {
         type: [attendanceSchema],
         default: []
-    }]
+    }
 
 
 },{ timestamps: true});
@@ -91,11 +91,11 @@ enrollSchema.virtual("fullname").get(function (){
 
 enrollSchema.methods.getAttendancePercentage = function (){
     //step 1: Check if student has attendance record
-    if(this.attendance.lenght === 0) return 0;
+    if(this.attendance.length === 0) return 0;
 
     //step 2: count how many times they were present
 
-    const presentCount = this.atttendance.filter((record) => record.status === "present").lenght;
+    const presentCount = this.attendance.filter((record) => record.status === "present").lenght;
 
     // step 3: calculate the percentage
     // formula: (present days/ total days) * 100
