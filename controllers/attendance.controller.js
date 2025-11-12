@@ -160,9 +160,32 @@ export const autoMarkAbsence = async (req, res, next) => {
 };
 
 // //getOverallAttendance
-// export const getOverallAttendance = async (req, res, next) => {
+export const getOverallAttendance = async (req, res, next) => {
+  try {
+    const students = await Enroll.find();
 
-// }
+    if(!students || students.length === 0) {
+      return res.status(400).json({
+        message: "student not found"
+      })
+    }
+
+    const today = new Date();
+
+
+    //format all student for each
+    const format = students.map((student) => {
+      const attendanceRecord = student.attendance || [];
+
+      //if no attendance yet
+      if(attendanceRecord.length === 0){
+        
+      }
+    })
+  } catch (error) {
+    
+  }
+}
 
 // //get StudentWith Attendance
 // export const getStudentWithAttendance = async (req, res, next) => {
