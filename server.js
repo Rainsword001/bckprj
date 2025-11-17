@@ -15,7 +15,7 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json()) // it parse out info to be display
 app.use(cors({
-    origin: ["https://attendance-en.onrender.com"],
+    origin: ["https://attendance-en.onrender.com", "http://localhost:3000", "http://localhost:5000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
