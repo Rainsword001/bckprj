@@ -100,7 +100,7 @@ enrollSchema.methods.getAttendancePercentage = function (){
     // step 3: calculate the percentage
     // formula: (present days/ total days) * 100
 
-    return ((presentCount / this.attendance.lenght)* 100).toFixed(2)
+    return ((presentCount / this.attendance.length)* 100).toFixed(2)
 }
 
 // method to get attendance by date range

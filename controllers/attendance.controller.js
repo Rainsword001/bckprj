@@ -180,9 +180,6 @@ export const getOverallAttendance = async (req, res, next) => {
         fullname: `${student.firstname} ${student.lastname}`,
         email: student.email,
         track: student.learningtrack,
-        present,
-        absent,
-        total,
         attendancePercentage: percentage,
       };
     });
