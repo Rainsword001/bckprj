@@ -164,26 +164,39 @@ export const getOverallAttendance = async (req, res, next) => {
   try {
     const students = await Enroll.find();
 
-    if(!students || students.length === 0) {
-      return res.status(400).json({
-        message: "student not found"
-      })
+    const data = [];
+
+    for (const student of students) {
+      const records = await Enroll.find({ email: student.email }).sort({ date: 1 });
+
+      const total = records.length;
+      const present = records.filter(r => r.status === "present").length;
+      const absent = records.filter(r => r.status === "absent").length;
+
+      const percentage = total > 0 ? ((present / total) * 100).toFixed(2) : "0";
+
+      // Calculate streak
+      let streak = 0;
+      for (let i = records.length - 1; i >= 0; i--) {
+        if (records[i].status === "present") streak++;
+        else break;
+      }
+
+      data.push({
+        id: student._id,
+        fullname: `${student.firstname} ${student.lastname}`,
+        email: student.email,
+        track: student.learningtrack,
+        attendancePercentage: percentage
+      });
     }
 
-    const today = new Date();
-
-
-    //format all student for each
-    const format = students.map((student) => {
-      const attendanceRecord = student.attendance || [];
-
-      //if no attendance yet
-      if(attendanceRecord.length === 0){
-        
-      }
-    })
+    res.status(200).json({
+      message: "All students with attendance summary",
+      students: data
+    });
   } catch (error) {
-    
+    next(error);
   }
 }
 
