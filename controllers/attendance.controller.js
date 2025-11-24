@@ -296,87 +296,106 @@ export const getAttendanceByName = async (req, res, next) => {
 
 
 
-// // ADMIN DASHBOARD SUMMARY
-// export const AdminSummary = async (req, res) => {
-//   try {
-//     const totalStudents = await Enroll.countDocuments();
-//     const tracks = await Enroll.distinct("learningtracks");
-//     const totalTracks = tracks.length;
+// ADMIN DASHBOARD SUMMARY
+export const AdminSummary = async (req, res) => {
+  try {
+    const totalStudents = await Enroll.countDocuments();
 
-//     const today = getStartOfDay();
-//     const tomorrow = new Date(today);
-//     tomorrow.setDate(tomorrow.getDate() + 1);
+    // FIXED: correct field name
+    const tracks = await Enroll.distinct("learningtrack");
+    const totalTracks = tracks.length;
 
-//     // Count students who have ANY attendance record today (present or absent)
-//     const studentsWithAttendanceToday = await Enroll.aggregate([
-//       { $unwind: "$attendance" },
-//       {
-//         $match: {
-//           "attendance.date": { $gte: today, $lt: tomorrow }
-//         }
-//       },
-//       { $count: "total" }
-//     ]);
+    // Helper: get start of today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-//     const presentToday = await Enroll.aggregate([
-//       { $unwind: "$attendance" },
-//       {
-//         $match: {
-//           "attendance.date": { $gte: today, $lt: tomorrow },
-//           "attendance.status": "present"
-//         }
-//       },
-//       { $count: "present" }
-//     ]);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-//     const presentCount = presentToday[0]?.present || 0;
-//     const attendancePercentage = totalStudents > 0
-//       ? Math.round((presentCount / totalStudents) * 100)
-//       : 0;
+    // Count PRESENT students uniquely
+    const presentToday = await Enroll.aggregate([
+      { $unwind: "$attendance" },
+      {
+        $match: {
+          "attendance.date": { $gte: today, $lt: tomorrow },
+          "attendance.status": "present"
+        }
+      },
+      { $group: { _id: "$_id" } }, // prevent double-count
+      { $count: "present" }
+    ]);
 
-//     res.json({
-//       totalStudents,
-//       totalTracks,
-//       todayAttendancePercentage: attendancePercentage,
-//       todayAbsentPercentage: 100 - attendancePercentage,
-//       presentToday: presentCount,
-//       absentToday: totalStudents - presentCount
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Failed to get summary" });
-//   }
-// };
+    const presentCount = presentToday[0]?.present || 0;
+
+    // Count ABSENT students uniquely
+    const absentToday = await Enroll.aggregate([
+      { $unwind: "$attendance" },
+      {
+        $match: {
+          "attendance.date": { $gte: today, $lt: tomorrow },
+          "attendance.status": "absent"
+        }
+      },
+      { $group: { _id: "$_id" } },
+      { $count: "absent" }
+    ]);
+    
+    const absentCount = absentToday[0]?.absent || 0;
+
+    // Attendance percentage
+    const attendancePercentage = totalStudents > 0
+      ? Math.round((presentCount / totalStudents) * 100)
+      : 0;
+
+    res.json({
+      totalStudents,
+      totalTracks,
+      presentToday: presentCount,
+      absentToday: absentCount,
+      todayAttendancePercentage: attendancePercentage,
+      todayAbsentPercentage: 100 - attendancePercentage
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to get summary" });
+  }
+};
+
 
 // // GET ALL STUDENTS WITH ATTENDANCE %
-// export const getOverallAttendance = async (req, res) => {
-//   try {
-//     const students = await Enroll.find().select("firstname lastname email learningtracks attendance");
+export const getOverallAttendance = async (req, res) => {
+  try {
+    // FIXED: correct field name
+    const students = await Enroll.find()
+      .select("firstname lastname email learningtrack attendance");
 
-//     const data = students.map(student => {
-//       const records = student.attendance || [];
-//       const total = records.length;
-//       const present = records.filter(r => r.status === "present").length;
-//       const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    const data = students.map(student => {
+      const records = student.attendance || [];
+      const total = records.length;
 
-//       return {
-//         id: student._id,
-//         fullname: `${student.firstname} ${student.lastname}`.trim(),
-//         email: student.email,
-//         track: student.learningtracks || student.learningtrack,
-//         attendancePercentage: percentage + "%"
-//       };
-//     });
+      const present = records.filter(r => r.status === "present").length;
+      const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
-//     // Sort by percentage descending
-//     data.sort((a, b) => parseInt(b.attendancePercentage) - parseInt(a.attendancePercentage));
+      return {
+        id: student._id,
+        fullname: `${student.firstname} ${student.lastname}`.trim(),
+        email: student.email,
+        track: student.learningtrack,
+        attendancePercentage: percentage   // number only
+      };
+    });
 
-//     res.json({
-//       message: "Attendance summary fetched",
-//       students: data
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    // Sort descending by percentage
+    data.sort((a, b) => b.attendancePercentage - a.attendancePercentage);
+
+    res.json({
+      message: "Attendance summary fetched",
+      students: data
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
