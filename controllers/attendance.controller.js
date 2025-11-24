@@ -414,3 +414,113 @@ export const getOverallAttendance = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// Top ten student
+export const getTop10Students = async (req, res) => {
+  try {
+    const students = await Enroll.find().select(
+      "firstname lastname email learningtrack attendance"
+    );
+
+    // Calculate attendance percentage for each student
+    const processed = students.map(student => {
+      const records = student.attendance || [];
+      const total = records.length;
+
+      const present = records.filter(r => r.status === "present").length;
+      const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+      return {
+        id: student._id,
+        fullname: `${student.firstname} ${student.lastname}`,
+        email: student.email,
+        track: student.learningtrack,
+        attendancePercentage: percentage
+      };
+    });
+
+    // --- Apply the 75% threshold ---
+    const aboveThreshold = processed.filter(
+      student => student.attendancePercentage >= 75
+    );
+
+    // Sort descending by percentage
+    const sorted = aboveThreshold.sort(
+      (a, b) => b.attendancePercentage - a.attendancePercentage
+    );
+
+    // Top 10 students only
+    const top10 = sorted.slice(0, 10);
+
+    res.status(200).json({
+      message: "Top 10 students (≥ 75%) fetched successfully",
+      totalQualified: sorted.length,
+      top10
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//Top ten students by tracks
+export const getTop10StudentsPerTrack = async (req, res, next) => {
+  try {
+    const { track } = req.query;
+
+    if (!track) {
+      return res.status(400).json({ message: "Track is required" });
+    }
+
+    // Fetch students of that track
+    const students = await Enroll.find({ learningtrack: track });
+
+    if (!students || students.length === 0) {
+      return res.status(404).json({ message: "No students found for this track" });
+    }
+
+    // Calculate attendance percentage for each student
+    const studentsWithPercentage = students.map((student) => {
+      const totalDays = student.attendance.length;
+
+      const presentDays = student.attendance.filter(
+        (a) => a.status === "present"
+      ).length;
+
+      const percentage = totalDays === 0 ? 0 : (presentDays / totalDays) * 100;
+
+      return {
+        studentId: student._id,
+        fullname: student.fullname,
+        email: student.email,
+        track: student.learningtrack,
+        percentage: Number(percentage.toFixed(2)),
+      };
+    });
+
+    // Filter only students >= 75%
+    const filtered = studentsWithPercentage.filter((s) => s.percentage >= 75);
+
+    // Sort by percentage DESC
+    const sorted = filtered.sort((a, b) => b.percentage - a.percentage);
+
+    // Pick top 10
+    const top10 = sorted.slice(0, 10);
+
+    return res.status(200).json({
+      success: true,
+      track,
+      totalQualified: top10.length,
+      top10,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
