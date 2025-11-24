@@ -207,31 +207,46 @@ export const getAttendacneByDateRange = async (req, res, next) => {
 
 
 // filter by track
-// export const filterByTrack = async (req, res, next) => {
-//     try {
-//         const { track } = req.query;
+export const filterByTrack = async (req, res, next) => {
+  try {
+    let { track } = req.query;
 
-//     if (!track) {
-//       return res.status(400).json({ message: "Track is required" });
-//     }
+    if (!track) {
+      return res.status(400).json({ message: "Track is required" });
+    }
 
-//     const students = await Enroll.find({ learningtrack: track });
+    // Trim spaces
+    track = track.trim();
 
-//     if (students.length === 0) {
-//       return res.status(404).json({ message: "No students found for this track" });
-//     }
+    // Case-insensitive exact match
+    const students = await Enroll.find({
+      learningtrack: { $regex: new RegExp(`^${track}$`, "i") }
+    });
 
-//     res.status(200).json({
-//       success: true,
-//       count: students.length,
-//       students
-//     });
-//     } catch (error) {
-//         res.status(500).json({message:"something went wrong",
-//             error: error.message
-//         })
-//     }
-// }
+    if (students.length === 0) {
+      // Optional: return 200 with empty array
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        students: [],
+        message: `No students found for track: ${track}`
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: students.length,
+      students
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
+
 
 
 
