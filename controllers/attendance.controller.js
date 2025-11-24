@@ -109,130 +109,187 @@ export const autoMarkAbsence = async (req, res) => {
 };
 
 
-
 // Get attendance by Date Range
-export const getAttendacneByDateRange = async (req, res, next) =>{
-  // to get the query string
-  const {start, end} = req.query
+export const getAttendacneByDateRange = async (req, res, next) => {
+  try {
+    const { range, start, end } = req.query;
 
-  // check if start and end exist
-  if(!start || !end){
-    return res.status(400).json({message: "start and end date are require"})
-  }
-      //create new date and actual date
-  const startDate = new Date(start)
+    let startDate, endDate;
 
-  const endDate = new Date(end)
-  endDate.setHours(23, 59, 59, 999)
+    // 1. HANDLE PREDEFINED RANGE
+    if (range && range !== "custom") {
+      const number = parseInt(range); // extract and convert number of the string to javaScript number
+      const unit = range.slice(-1); // extract the alphabet in the range string
 
+      if (isNaN(number) || !["d", "w"].includes(unit)) {
+        return res.status(400).json({ message: "Invalid range format (use 7d, 2w)" });
+      }
 
-  if(isNaN(startDate) || isNaN(endDate)){
-    return res.status(400).json({
-      message: "invalid Date , try YYYY-MM-DD"
-    })
-  }
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
 
+      startDate = new Date();
 
-  //go through the data, filter it and get the exact date
-  const students = await Enroll.find({}, {
-      firstname: 1,
-      lastname:1,
-      email:1,
-      learningtrack:1,
-      attendance:1 // inclusion projection
-  })
-
-  //Filtering
-  const findStudents = students.map(student =>{
-    const filteredStudents = student.attendance.filter(record => {
-        const recordDate = new Date(record.date)
-        return recordDate >= startDate && recordDate <= endDate
-    })
-
-    // restict an empty array
-    if(filteredStudents.length > 0){
-      return{
-        name: `${student.firstname} ${student.lastname}`,
-        email: student.email,
-        learningtrack: student.learningtrack,
-        gender: student.gender
+      if (unit === "d") {
+        startDate.setDate(startDate.getDate() - number);
+      } else if (unit === "w") {
+        startDate.setDate(startDate.getDate() - number * 7);
       }
     }
 
-    return null
-  }).filter(Boolean)
+    // 2. CUSTOM RANGE
+    if (range === "custom") {
+      if (!start || !end) {
+        return res.status(400).json({
+          message: "start and end date are required for custom range",
+        });
+      }
 
-  res.status(200).json({
-    data: findStudents
-  })
-}
-
-// filter by track
-export const filterByTrack = async (req, res, next) => {
-    try {
-        const { track } = req.query;
-
-    if (!track) {
-      return res.status(400).json({ message: "Track is required" });
+      startDate = new Date(start);
+      endDate = new Date(end);
+      endDate.setHours(23, 59, 59, 999);
     }
 
-    const students = await Enroll.find({ learningtrack: track });
-
-    if (students.length === 0) {
-      return res.status(404).json({ message: "No students found for this track" });
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        message: "Invalid date range. Provide range or custom start/end dates.",
+      });
     }
+
+
+    // 3. GET STUDENTS
+    const students = await Enroll.find(
+      {},
+      {
+        firstname: 1,
+        lastname: 1,
+        email: 1,
+        gender: 1,
+        learningtrack: 1,
+        attendance: 1,
+      }
+    );
+
+    // 4. FILTER ATTENDANCE
+  
+    const filtered = students
+      .map((student) => {
+        const records = student.attendance.filter((r) => {
+          const d = new Date(r.date);
+          return d >= startDate && d <= endDate;
+        });
+
+        if (records.length === 0) return null;
+
+        return {
+          name: `${student.firstname} ${student.lastname}`,
+          email: student.email,
+          gender: student.gender,
+          learningtrack: student.learningtrack,
+          attendanceCount: records.length,
+          present: records.filter((r) => r.status === "present").length,
+          absent: records.filter((r) => r.status === "absent").length,
+          records,
+        };
+      })
+      .filter(Boolean);
 
     res.status(200).json({
-      success: true,
-      count: students.length,
-      students
+      message: "successful",
+      totalStudents: filtered.length,
+      data: filtered,
     });
-    } catch (error) {
-        res.status(500).json({message:"something went wrong",
-            error: error.message
-        })
-    }
-}
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "something went wrong" });
+  }
+};
+
+
+// filter by track
+// export const filterByTrack = async (req, res, next) => {
+//     try {
+//         const { track } = req.query;
+
+//     if (!track) {
+//       return res.status(400).json({ message: "Track is required" });
+//     }
+
+//     const students = await Enroll.find({ learningtrack: track });
+
+//     if (students.length === 0) {
+//       return res.status(404).json({ message: "No students found for this track" });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       count: students.length,
+//       students
+//     });
+//     } catch (error) {
+//         res.status(500).json({message:"something went wrong",
+//             error: error.message
+//         })
+//     }
+// }
 
 
 
 // get attendance by Name
 export const getAttendanceByName = async (req, res, next) => {
   try {
-    const { name } = req.query;
+    const {search} = req.query;
 
-    if (!name) {
+    if(!search){
       return res.status(400).json({
-        success: false,
-        message: "Name is required"
-      });
+        message: "searck key is required"
+      })
     }
 
-    // case-insensitive + partial match
-    const student = await Enroll.findOne({
-      name: { $regex: name, $options: "i" }
-    });
+    const regex = new RegExp(search, "i")  // set to be case incensitives
 
-    if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: "Student not found"
-      });
+
+    const students = await Enroll.find({
+      $or: [
+        {firstname: regex},
+        {lastname:regex}
+      ]
+
+    },  { firstname: 1,
+      lastname:1,
+      email:1,
+      learningtrack:1,
+      attendance:1 
+
+    })
+
+    if(students.length === 0){
+      return res.status(404).json({message: "name is not found"})
     }
 
-    res.status(200).json({
-      success: true,
-      student: {
-        name: student.name,
+    const result = students.map(student =>({
+        name: `${student.firstname} ${student.lastname}`,
         email: student.email,
         learningtrack: student.learningtrack,
-        attendanceCount: student.attendance.length,
-        attendance: student.attendance
-      }
-    });
+        totalAttendance: student.attendance.length,
+        present: student.attendance.filter(r => r.status === "present").length,
+        absent: student.attendance.filter(r => r.status === "absent").length,
+        records: student.attendance
+    }));
+
+    res.status(200).json({
+      message: "Attendance filtered by name successfully",
+      count: result.length,
+      data: result
+      
+    })
 
   } catch (error) {
-    next(error);
+    console.error(error)
+    res.status(500).json({
+      message:"something went wrong",
+      error: error.message
+    })
   }
 };
 
