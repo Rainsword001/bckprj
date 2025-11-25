@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import admin from "../models/admin.model.js";
+import admin from "../models/auth.model.js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { JWT_EXPIRES_IN, JWT_SECRET } from "../config/env.js";
