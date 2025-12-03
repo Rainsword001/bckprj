@@ -18,8 +18,6 @@ const attendanceSchema = new mongoose.Schema({
 
 
 
-
-
 //  ENROLL SCHEMA
 
 const enrollSchema = new mongoose.Schema({
